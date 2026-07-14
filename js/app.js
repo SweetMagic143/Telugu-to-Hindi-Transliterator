@@ -1,18 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // -------------------------------------------------------------
-    // Progressive Web App: Service Worker Registration
-    // -------------------------------------------------------------
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
-            .then((registration) => console.log('Service Worker registered with scope:', registration.scope))
-            .catch((error) => console.error('Service Worker registration failed:', error));
-    }
-
-    // Standard UI Elements
-    const inputElement = document.getElementById('teluguInput');
-    // ... [The entirety of the Phase 12 logic continues identically below this point] ...
-
-document.addEventListener('DOMContentLoaded', () => {
     // Standard UI Elements
     const inputElement = document.getElementById('teluguInput');
     const outputElement = document.getElementById('devanagariOutput');
