@@ -1,0 +1,76 @@
+:root {
+    --bg-color: #f8f9fa;
+    --text-color: #212529;
+    --card-bg: #ffffff;
+    --border-color: #dee2e6;
+    --focus-ring: rgba(13, 110, 253, 0.25);
+    --muted-color: #6c757d;
+    --editor-font-size: 1.25rem;
+    --print-font-size: 14pt;
+    --invert-icon: none;
+    --drop-zone-bg: #f8f9fa;
+    --drop-zone-border: #ced4da;
+    --drop-zone-active: #e2e3e5;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #121212;
+        --text-color: #e0e0e0;
+        --card-bg: #1e1e1e;
+        --border-color: #333333;
+        --focus-ring: rgba(13, 110, 253, 0.5);
+        --muted-color: #adb5bd;
+        --invert-icon: invert(1);
+        --drop-zone-bg: #1a1a1a;
+        --drop-zone-border: #495057;
+        --drop-zone-active: #2b2b2b;
+    }
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.app-header { background-color: var(--card-bg); border-color: var(--border-color) !important; }
+.card { background-color: var(--card-bg); border-color: var(--border-color); }
+.card-header { color: var(--text-color); }
+
+.transliteration-box {
+    height: 50vh;
+    min-height: 250px;
+    resize: none;
+    font-size: var(--editor-font-size);
+    line-height: 1.6;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+.transliteration-box:focus {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem var(--focus-ring);
+}
+.transliteration-box[readonly] { background-color: var(--card-bg); cursor: text; }
+.counter-text { color: var(--muted-color); }
+.toast-container { z-index: 1055; }
+.progress-bar { transition: width 0.1s linear; }
+.progress-label { color: var(--text-color); font-weight: 500; }
+
+/* Custom Adaptive Text Class */
+.text-adaptive-muted { color: var(--muted-color) !important; }
+
+/* Drag and Drop Zone Styles */
+.drop-zone {
+    background-color: var(--drop-zone-bg);
+    border: 2px dashed var(--drop-zone-border);
+    transition: all 0.2s ease-in-out;
+}
+.drop-zone.active-drop {
+    background-color: var(--drop-zone-active);
+    border-color: #198754; 
+}
