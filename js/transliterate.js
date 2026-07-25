@@ -1,17 +1,24 @@
 class Transliterator {
-    static TELUGU_START = 0x0C00;
-    static TELUGU_END = 0x0C7F;
-    static DEVANAGARI_START = 0x0900;
-    static DEVANAGARI_END = 0x097F;
-    static UNICODE_OFFSET = 0x0300; 
+    // Standardized Unicode block bases for all Brahmi-derived scripts
+    static BASES = {
+        'hi': 0x0900, // Devanagari (Hindi)
+        'ta': 0x0B80, // Tamil
+        'te': 0x0C00, // Telugu
+        'kn': 0x0C80, // Kannada
+        'ml': 0x0D00  // Malayalam
+    };
 
     /**
-     * Converts text bidirectionally between Telugu and Devanagari.
-     * @param {string} text - Input text
-     * @param {string} direction - 'TE_TO_HI' or 'HI_TO_TE'
+     * Mathematically converts text between any two supported Indian scripts.
+     * Respects escape syntax {} to preserve specific text blocks.
      */
-    static convert(text, direction = 'TE_TO_HI') {
-        if (!text) return '';
+    static convert(text, sourceLang, targetLang) {
+        if (!text || sourceLang === targetLang) return text;
+
+        const sourceBase = this.BASES[sourceLang];
+        const targetBase = this.BASES[targetLang];
+
+        if (!sourceBase || !targetBase) return text; // Fallback if language is missing
         
         let result = '';
         let isEscaped = false;
@@ -20,16 +27,26 @@ class Transliterator {
             let charCode = text.charCodeAt(i);
             let char = text[i];
 
-            if (char === '{') { isEscaped = true; continue; }
-            if (char === '}') { isEscaped = false; continue; }
-            if (isEscaped) { result += char; continue; }
-
-            if (direction === 'TE_TO_HI' && charCode >= this.TELUGU_START && charCode <= this.TELUGU_END) {
-                result += String.fromCharCode(charCode - this.UNICODE_OFFSET);
-            } else if (direction === 'HI_TO_TE' && charCode >= this.DEVANAGARI_START && charCode <= this.DEVANAGARI_END) {
-                result += String.fromCharCode(charCode + this.UNICODE_OFFSET);
-            } else {
+            if (char === '{') {
+                isEscaped = true;
+                continue;
+            }
+            if (char === '}') {
+                isEscaped = false;
+                continue;
+            }
+            if (isEscaped) {
                 result += char;
+                continue;
+            }
+
+            // If the character falls within the source language's 128-character Unicode block
+            if (charCode >= sourceBase && charCode <= sourceBase + 0x007F) {
+                // Find mathematical offset and apply to target base
+                const offset = charCode - sourceBase;
+                result += String.fromCharCode(targetBase + offset);
+            } else {
+                result += char; // Retain spaces, English letters, and numbers
             }
         }
         return result;
