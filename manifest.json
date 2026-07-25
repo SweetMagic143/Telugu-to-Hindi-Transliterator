@@ -1,6 +1,6 @@
 {
-  "name": "Telugu to Devanagari Transliterator",
-  "short_name": "Transliterator",
+  "name": "Indian Script Transliterator",
+  "short_name": "IndicLipi",
   "description": "Professional offline transliteration engine.",
   "start_url": "./index.html",
   "display": "standalone",
