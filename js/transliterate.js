@@ -1,13 +1,16 @@
 class Transliterator {
     static TELUGU_START = 0x0C00;
     static TELUGU_END = 0x0C7F;
+    static DEVANAGARI_START = 0x0900;
+    static DEVANAGARI_END = 0x097F;
     static UNICODE_OFFSET = 0x0300; 
 
     /**
-     * Converts text from Telugu to Devanagari.
-     * Respects escape syntax {} to preserve specific text blocks.
+     * Converts text bidirectionally between Telugu and Devanagari.
+     * @param {string} text - Input text
+     * @param {string} direction - 'TE_TO_HI' or 'HI_TO_TE'
      */
-    static convert(text) {
+    static convert(text, direction = 'TE_TO_HI') {
         if (!text) return '';
         
         let result = '';
@@ -17,25 +20,14 @@ class Transliterator {
             let charCode = text.charCodeAt(i);
             let char = text[i];
 
-            // Handle state toggles for escape parsing
-            if (char === '{') {
-                isEscaped = true;
-                continue; // Skip rendering the brace
-            }
-            if (char === '}') {
-                isEscaped = false;
-                continue; // Skip rendering the brace
-            }
+            if (char === '{') { isEscaped = true; continue; }
+            if (char === '}') { isEscaped = false; continue; }
+            if (isEscaped) { result += char; continue; }
 
-            // If inside {}, append directly without translation
-            if (isEscaped) {
-                result += char;
-                continue;
-            }
-
-            // Standard transliteration logic
-            if (charCode >= this.TELUGU_START && charCode <= this.TELUGU_END) {
+            if (direction === 'TE_TO_HI' && charCode >= this.TELUGU_START && charCode <= this.TELUGU_END) {
                 result += String.fromCharCode(charCode - this.UNICODE_OFFSET);
+            } else if (direction === 'HI_TO_TE' && charCode >= this.DEVANAGARI_START && charCode <= this.DEVANAGARI_END) {
+                result += String.fromCharCode(charCode + this.UNICODE_OFFSET);
             } else {
                 result += char;
             }
