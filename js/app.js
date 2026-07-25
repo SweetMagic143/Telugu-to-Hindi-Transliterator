@@ -5,7 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copyBtn');
     const clearBtn = document.getElementById('clearBtn');
     const printBtn = document.getElementById('printBtn');
+    const swapBtn = document.getElementById('swapBtn'); // New Hook
     
+    // Header UI
+    const mainAppTitle = document.getElementById('mainAppTitle');
+    const box1Header = document.getElementById('box1Header');
+    const box2Header = document.getElementById('box2Header');
+
     // Core Logic Elements
     const inputWordCount = document.getElementById('inputWordCount');
     const inputCharCount = document.getElementById('inputCharCount');
@@ -16,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorFontValue = document.getElementById('editorFontValue');
     const printFontValue = document.getElementById('printFontValue');
 
-    // Subsystem: Text File I/O
+    // Subsystems
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
     const processFileBtn = document.getElementById('processFileBtn');
@@ -25,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressPercentage = document.getElementById('progressPercentage');
     const progressStatusText = document.getElementById('progressStatusText');
 
-    // Subsystem: Image OCR I/O
     const imageInput = document.getElementById('imageInput');
     const imageDropZone = document.getElementById('imageDropZone');
     const processImageBtn = document.getElementById('processImageBtn');
@@ -42,32 +47,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const STORAGE_KEY_TEXT = 'transliteration_session_data';
     const STORAGE_KEY_CONFIG = 'transliteration_config_data';
+    const STORAGE_KEY_DIR = 'transliteration_direction';
     const PRINT_CHAR_LIMIT = 50000;
 
+    let currentDirection = localStorage.getItem(STORAGE_KEY_DIR) || 'TE_TO_HI';
+
     // -------------------------------------------------------------
-    // Dynamic Web Worker Construction
+    // Dynamic Web Worker Construction (Upgraded for JSON passing)
     // -------------------------------------------------------------
     const workerScript = `
         ${Transliterator.toString()}
-        self.onmessage = function(e) { self.postMessage(Transliterator.convert(e.data)); };
+        self.onmessage = function(e) { 
+            const data = e.data;
+            self.postMessage(Transliterator.convert(data.text, data.direction)); 
+        };
     `;
     const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
     const transliterationWorker = new Worker(URL.createObjectURL(workerBlob));
 
     let isWorkerBusy = false;
-    let pendingText = null;
+    let pendingTask = null;
 
     transliterationWorker.onmessage = (e) => {
         outputElement.value = e.data;
         updateCounters(e.data, outputWordCount, outputCharCount);
         isWorkerBusy = false;
-        if (pendingText !== null) {
-            const textToProcess = pendingText;
-            pendingText = null;
+        if (pendingTask !== null) {
+            const taskToProcess = pendingTask;
+            pendingTask = null;
             isWorkerBusy = true;
-            transliterationWorker.postMessage(textToProcess);
+            transliterationWorker.postMessage(taskToProcess);
         }
     };
+
+    // -------------------------------------------------------------
+    // State Mutation & DOM Repainting
+    // -------------------------------------------------------------
+    const applyDirectionUI = () => {
+        if (currentDirection === 'TE_TO_HI') {
+            mainAppTitle.textContent = 'Telugu (తెలుగు) to Hindi (हिन्दी) Transliterator';
+            box1Header.textContent = 'Telugu (Input)';
+            box2Header.textContent = 'Devanagari (Output)';
+            inputElement.placeholder = 'ఉదాహరణ: నేను {తెలుగు} మాట్లాడుతాను.';
+            outputElement.placeholder = 'देवनागरी आउटपुट...';
+        } else {
+            mainAppTitle.textContent = 'Hindi (हिन्दी) to Telugu (తెలుగు) Transliterator';
+            box1Header.textContent = 'Hindi/Devanagari (Input)';
+            box2Header.textContent = 'Telugu (Output)';
+            inputElement.placeholder = 'उदाहरण: मैं {हिन्दी} बोलता हूँ।';
+            outputElement.placeholder = 'తెలుగు అవుట్‌పుట్...';
+        }
+    };
+
+    swapBtn.addEventListener('click', () => {
+        currentDirection = currentDirection === 'TE_TO_HI' ? 'HI_TO_TE' : 'TE_TO_HI';
+        localStorage.setItem(STORAGE_KEY_DIR, currentDirection);
+        applyDirectionUI();
+
+        // Safely swap active text content
+        const currentInput = inputElement.value;
+        const currentOutput = outputElement.value;
+        
+        if (currentOutput) {
+            inputElement.value = currentOutput;
+            dispatchToWorker(currentOutput);
+        } else if (currentInput) {
+            dispatchToWorker(currentInput); // Force recalculation based on new direction
+        }
+    });
 
     // -------------------------------------------------------------
     // Utilities & Configuration
@@ -108,10 +155,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------
     // Editor Pipeline
     // -------------------------------------------------------------
-    const dispatchToWorker = (teluguText) => {
-        updateCounters(teluguText, inputWordCount, inputCharCount);
-        localStorage.setItem(STORAGE_KEY_TEXT, teluguText);
-        if (isWorkerBusy) { pendingText = teluguText; } else { isWorkerBusy = true; transliterationWorker.postMessage(teluguText); }
+    const dispatchToWorker = (inputText) => {
+        updateCounters(inputText, inputWordCount, inputCharCount);
+        localStorage.setItem(STORAGE_KEY_TEXT, inputText);
+        
+        const taskPayload = { text: inputText, direction: currentDirection };
+
+        if (isWorkerBusy) { 
+            pendingTask = taskPayload; 
+        } else { 
+            isWorkerBusy = true; 
+            transliterationWorker.postMessage(taskPayload); 
+        }
     };
 
     const debouncedDispatch = debounce((text) => { dispatchToWorker(text); }, 200);
@@ -119,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputElement.addEventListener('input', (event) => debouncedDispatch(event.target.value));
 
     const hydrateState = () => {
+        applyDirectionUI();
         const savedConfig = JSON.parse(localStorage.getItem(STORAGE_KEY_CONFIG));
         if (savedConfig) applyConfiguration(savedConfig.editorSize, savedConfig.printSize);
         const savedText = localStorage.getItem(STORAGE_KEY_TEXT);
@@ -130,13 +186,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------
     copyBtn.addEventListener('click', async () => {
         if (!outputElement.value) return showToast('Nothing to copy.');
-        try { await navigator.clipboard.writeText(outputElement.value); showToast('Devanagari text copied.'); } 
+        try { await navigator.clipboard.writeText(outputElement.value); showToast('Output text copied.'); } 
         catch (err) { showToast('Failed to copy text.'); }
     });
 
     clearBtn.addEventListener('click', () => {
         inputElement.value = ''; outputElement.value = ''; fileInput.value = ''; imageInput.value = '';
-        currentFile = null; currentImage = null; pendingText = null;
+        currentFile = null; currentImage = null; pendingTask = null;
         processFileBtn.disabled = true; processImageBtn.disabled = true;
         progressContainer.classList.add('d-none'); ocrProgressContainer.classList.add('d-none');
         updateCounters('', inputWordCount, inputCharCount); updateCounters('', outputWordCount, outputCharCount);
@@ -159,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // -------------------------------------------------------------
-    // Image OCR Subsystem
+    // Image OCR Subsystem (Context-Aware Language Model)
     // -------------------------------------------------------------
     const handleImageSelection = (file) => {
         ocrProgressContainer.classList.add('d-none');
@@ -196,11 +252,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ocrPercentage.textContent = '0%';
         ocrStatusText.textContent = 'Preparing Optical Engine...';
 
+        // Dynamically fetch Hindi (hin) or Telugu (tel) model based on active direction
+        const ocrLang = currentDirection === 'TE_TO_HI' ? 'tel' : 'hin';
+
         try {
-            const result = await Tesseract.recognize(currentImage, 'tel', {
+            const result = await Tesseract.recognize(currentImage, ocrLang, {
                 logger: m => {
-                    // Tesseract reports detailed initialization states.
-                    // We map the main text recognition phase to the progress bar.
                     if (m.status === 'recognizing text') {
                         const progress = Math.min(100, Math.round(m.progress * 100));
                         ocrProgressBar.style.width = `${progress}%`;
@@ -209,19 +266,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (m.status === 'loading tesseract core') {
                         ocrStatusText.textContent = 'Loading core engine...';
                     } else if (m.status === 'loading language traineddata') {
-                        ocrStatusText.textContent = 'Downloading Telugu Language Model...';
+                        ocrStatusText.textContent = 'Downloading Language Model...';
                     }
                 }
             });
 
             const extractedText = result.data.text;
-
-            // Route output into the main editor for user validation
             inputElement.value = extractedText;
             dispatchToWorker(extractedText);
 
             ocrStatusText.textContent = 'Complete.';
-            showToast('Image extraction complete. Please verify accuracy.');
+            showToast('Image extraction complete.');
 
         } catch (error) {
             console.error('OCR Error:', error);
@@ -238,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // -------------------------------------------------------------
-    // Text File Bulk Subsystem (Intact)
+    // Text File Bulk Subsystem (Direction Aware)
     // -------------------------------------------------------------
     const handleFileSelection = (file) => {
         progressContainer.classList.add('d-none');
@@ -255,25 +310,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentFile) return;
         const reader = new FileReader();
         processFileBtn.disabled = true; fileInput.disabled = true;
+        
         reader.onload = (e) => {
-            const teluguText = e.target.result; const totalLength = teluguText.length; const chunkSize = 50000; 
-            let currentIndex = 0; let devanagariText = '';
-            progressContainer.classList.remove('d-none'); progressBar.style.width = '0%'; progressPercentage.textContent = '0%'; progressStatusText.textContent = 'Translating...';
+            const fileText = e.target.result; 
+            const totalLength = fileText.length; 
+            const chunkSize = 50000; 
+            let currentIndex = 0; 
+            let outputText = '';
+            
+            progressContainer.classList.remove('d-none'); 
+            progressBar.style.width = '0%'; 
+            progressPercentage.textContent = '0%'; 
+            progressStatusText.textContent = 'Translating...';
+            
             const processChunk = () => {
-                devanagariText += Transliterator.convert(teluguText.substring(currentIndex, currentIndex + chunkSize));
+                // Pass the global active direction to the converter
+                outputText += Transliterator.convert(fileText.substring(currentIndex, currentIndex + chunkSize), currentDirection);
                 currentIndex += chunkSize;
+                
                 const progress = Math.min(100, Math.round((currentIndex / totalLength) * 100));
-                progressBar.style.width = `${progress}%`; progressPercentage.textContent = `${progress}%`;
-                if (currentIndex < totalLength) { setTimeout(processChunk, 0); } else { finalizeDownload(devanagariText, currentFile.name); }
-            }; processChunk();
-        }; reader.readAsText(currentFile);
+                progressBar.style.width = `${progress}%`; 
+                progressPercentage.textContent = `${progress}%`;
+                
+                if (currentIndex < totalLength) { 
+                    setTimeout(processChunk, 0); 
+                } else { 
+                    finalizeDownload(outputText, currentFile.name); 
+                }
+            }; 
+            processChunk();
+        }; 
+        reader.readAsText(currentFile);
     });
 
     const finalizeDownload = (textData, originalFilename) => {
+        const ext = currentDirection === 'TE_TO_HI' ? '_devanagari.txt' : '_telugu.txt';
         const blob = new Blob([textData], { type: 'text/plain;charset=utf-8' });
-        const downloadUrl = URL.createObjectURL(blob); const downloadLink = document.createElement('a');
-        downloadLink.href = downloadUrl; downloadLink.download = originalFilename.replace('.txt', '_devanagari.txt');
+        const downloadUrl = URL.createObjectURL(blob); 
+        const downloadLink = document.createElement('a');
+        downloadLink.href = downloadUrl; 
+        downloadLink.download = originalFilename.replace('.txt', ext);
         document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink); URL.revokeObjectURL(downloadUrl);
+        
         progressStatusText.textContent = 'Complete.'; showToast('File processed and downloaded.');
         setTimeout(() => { progressContainer.classList.add('d-none'); fileInput.disabled = false; fileInput.value = ''; currentFile = null; processFileBtn.disabled = true; }, 2500); 
     };
