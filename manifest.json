@@ -1,6 +1,6 @@
 {
   "name": "Indian Script Transliterator",
-  "short_name": "IndicLpi",
+  "short_name": "IndicLipi",
   "description": "Professional offline transliteration engine.",
   "start_url": "./index.html",
   "display": "standalone",
