@@ -39,16 +39,19 @@ body {
 .card { background-color: var(--card-bg); border-color: var(--border-color); }
 .card-header { color: var(--text-color); }
 
+/* Updated for dynamic auto-expanding */
 .transliteration-box {
-    height: 50vh;
-    min-height: 250px;
     resize: none;
+    overflow: hidden; /* Prevents scrollbar flash during resize */
+    min-height: 70px; /* Base height for ~2 rows */
     font-size: var(--editor-font-size);
     line-height: 1.6;
     background-color: var(--bg-color);
     color: var(--text-color);
     border-color: var(--border-color);
+    transition: background-color 0.3s, color 0.3s;
 }
+
 .transliteration-box:focus {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -60,17 +63,30 @@ body {
 .toast-container { z-index: 1055; }
 .progress-bar { transition: width 0.1s linear; }
 .progress-label { color: var(--text-color); font-weight: 500; }
-
-/* Custom Adaptive Text Class */
 .text-adaptive-muted { color: var(--muted-color) !important; }
 
-/* Drag and Drop Zone Styles */
-.drop-zone {
-    background-color: var(--drop-zone-bg);
-    border: 2px dashed var(--drop-zone-border);
-    transition: all 0.2s ease-in-out;
+.drop-zone { background-color: var(--drop-zone-bg); border: 2px dashed var(--drop-zone-border); transition: all 0.2s ease-in-out; }
+.drop-zone.active-drop { background-color: var(--drop-zone-active); border-color: #198754; }
+
+/* Inline UI Controls */
+.lang-selector {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
+    cursor: pointer;
 }
-.drop-zone.active-drop {
-    background-color: var(--drop-zone-active);
-    border-color: #198754; 
+.lang-selector:focus {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+.swap-icon {
+    font-size: 1.2rem;
+    padding: 2px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    transition: color 0.2s;
+}
+.swap-icon:hover {
+    color: #0d6efd;
 }
